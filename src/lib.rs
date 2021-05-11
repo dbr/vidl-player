@@ -5,7 +5,7 @@ use crate::util::{
     event::{Event, Events},
     StatefulList,
 };
-use std::{error::Error, io};
+use std::{error::Error, io, path::PathBuf};
 use termion::{event::Key, input::MouseTerminal, raw::IntoRawMode, screen::AlternateScreen};
 use tui::{
     backend::TermionBackend,
@@ -21,45 +21,84 @@ enum AppMode {
     VideoList,
 }
 struct App<'a> {
-    channels: StatefulList<(&'a str, usize)>,
+    channels: StatefulList<(String, usize)>,
     videos: StatefulList<(&'a str, usize)>,
     app_mode: AppMode,
 }
 
 impl<'a> App<'a> {
     fn new() -> App<'a> {
+        let mut data = list_videos("/mnt/freenas_misc/vidl".into());
+        data.sort_videos();
+
+        let mut channels = vec![];
+        for (chan_title, chan_info) in &data.channels {
+            channels.push((chan_title.clone(), chan_info.videos.len()));
+        }
+
+        channels.sort_by(|a, b| {a.partial_cmp(&b).unwrap()});
+
         App {
             app_mode: AppMode::ChannelList,
-            channels: StatefulList::with_items(vec![
-                ("Item0", 1),
-                ("Item1", 2),
-                ("Item2", 1),
-                ("Item3", 3),
-                ("Item4", 1),
-                ("Item5", 4),
-                ("Item6", 1),
-                ("Item7", 3),
-                ("Item8", 1),
-                ("Item9", 6),
-                ("Item10", 1),
-                ("Item11", 3),
-                ("Item12", 1),
-                ("Item13", 2),
-                ("Item14", 1),
-                ("Item15", 1),
-                ("Item16", 4),
-                ("Item17", 1),
-                ("Item18", 5),
-                ("Item19", 4),
-                ("Item20", 1),
-                ("Item21", 2),
-                ("Item22", 1),
-                ("Item23", 3),
-                ("Item24", 1),
-            ]),
+            channels: StatefulList::with_items(channels),
             videos: StatefulList::with_items(vec![("Hm", 1), ("Yep", 2)]),
         }
     }
+}
+
+use std::collections::HashMap;
+
+#[derive(Debug)]
+struct Data {
+    channels: HashMap<String, Channel>,
+}
+impl Data {
+    fn sort_videos(&mut self) {
+        for (t, c) in &mut self.channels {
+            c.videos.sort_by(|a, b| a.path.partial_cmp(&b.path).unwrap());
+        }
+    }
+}
+#[derive(Debug)]
+struct Video {
+    title: String,
+    path: PathBuf,
+}
+#[derive(Debug)]
+struct Channel {
+    videos: Vec<Video>,
+}
+
+fn list_videos(path: std::path::PathBuf) -> Data {
+    let mut ret = Data {
+        channels: HashMap::new(),
+    };
+
+    let mut files = vec![];
+    for f in std::fs::read_dir(path).unwrap() {
+        files.push(f.unwrap());
+    }
+
+    files.sort_by(|a, b| a.path().partial_cmp(&b.path()).unwrap());
+
+    for info in files {
+        if info.file_type().unwrap().is_file() {
+            let raw_filename = info.file_name();
+            let filename = raw_filename.to_str().unwrap();
+            let (chan, title) = match filename.find("__") {
+                Some(idx) => filename.split_at(idx),
+                None => continue,
+            };
+            let title = title.split_at(3).1;
+            ret.channels
+                .entry(chan.into())
+                .or_insert(Channel { videos: vec![] })
+                .videos
+                .push(Video{title: title.into(), path: info.path()});
+        }
+    }
+
+    ret
 }
 
 pub fn main() -> Result<(), Box<dyn Error>> {
@@ -96,7 +135,7 @@ pub fn main() -> Result<(), Box<dyn Error>> {
 
             // Create a List from all list items and highlight the currently selected one
             let items = List::new(items)
-                .block(Block::default().borders(Borders::ALL).title("List"))
+                .block(Block::default().borders(Borders::ALL).title("Channels"))
                 .highlight_style(
                     Style::default()
                         .bg(Color::DarkGray)

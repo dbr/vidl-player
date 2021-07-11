@@ -16,6 +16,7 @@ where
     let wb = glutin::window::WindowBuilder::new().with_title("A fantastic window!");
 
     let windowed_context = glutin::ContextBuilder::new()
+        .with_vsync(true)
         .build_windowed(wb, &event_loop)
         .unwrap();
     let windowed_context = unsafe { windowed_context.make_current().unwrap() };
@@ -48,15 +49,17 @@ where
     // Configure font (using built-in fixed size bitmap font)
     let scale_factor = windowed_context.window().scale_factor() as f32;
 
-    let font_size = 13.0 * scale_factor;
-    imgui
-        .fonts()
-        .add_font(&[imgui::FontSource::DefaultFontData {
-            config: Some(imgui::FontConfig {
-                size_pixels: font_size,
-                ..imgui::FontConfig::default()
-            }),
-        }]);
+    let font_size = (16.0 * scale_factor).round();
+    imgui.fonts().add_font(&[imgui::FontSource::TtfData {
+        data: include_bytes!("../MyriadPro-Light.ttf"),
+        size_pixels: font_size,
+        config: Some(imgui::FontConfig {
+            size_pixels: font_size,
+            oversample_h: 4,
+            oversample_v: 4,
+            ..imgui::FontConfig::default()
+        }),
+    }]);
 
     imgui.io_mut().font_global_scale = (1.0 / scale_factor) as f32;
 

@@ -1,11 +1,24 @@
 use std::collections::HashMap;
 use std::path::PathBuf;
 
-#[derive(Debug)]
+#[derive(Debug, PartialEq, Eq)]
 pub struct Video {
     pub title: String,
     pub path: PathBuf,
 }
+
+impl PartialOrd for Video {
+    fn partial_cmp(&self, other: &Self) -> Option<std::cmp::Ordering> {
+        self.path.partial_cmp(&other.path)
+    }
+}
+
+impl Ord for Video {
+    fn cmp(&self, other: &Self) -> std::cmp::Ordering {
+        self.path.cmp(&other.path)
+    }
+}
+
 #[derive(Debug)]
 pub struct Channel {
     pub videos: Vec<Video>,
@@ -24,7 +37,6 @@ impl Data {
         }
     }
 }
-
 
 pub fn list_videos(path: std::path::PathBuf) -> Data {
     let mut ret = Data {
@@ -56,6 +68,9 @@ pub fn list_videos(path: std::path::PathBuf) -> Data {
                     path: info.path(),
                 });
         }
+    }
+    for (key, data) in &mut ret.channels {
+        data.videos.sort();
     }
 
     ret

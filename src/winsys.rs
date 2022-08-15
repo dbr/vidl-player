@@ -13,7 +13,7 @@ where
     F: FnMut(&imgui::Ui) -> (),
 {
     let event_loop = glutin::event_loop::EventLoop::new();
-    let wb = glutin::window::WindowBuilder::new().with_title("A fantastic window!");
+    let wb = glutin::window::WindowBuilder::new().with_title("vidl player");
 
     let windowed_context = glutin::ContextBuilder::new()
         .with_vsync(true)

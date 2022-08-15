@@ -97,7 +97,7 @@ pub fn main() -> anyhow::Result<()> {
                 if ui.button(im_str!("Play"), [-100.0, 28.0]) {
                     let chan_name = channel_items[app.sel_channel].to_string();
                     let video = &app.data.channels[&chan_name].videos[app.sel_video];
-                    std::process::Command::new("vlc").arg(&video.path).spawn().unwrap();
+                    std::process::Command::new("xdg-open").arg(&video.path).spawn().unwrap();
                 }
 
             });

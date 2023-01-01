@@ -3,7 +3,7 @@ mod winsys;
 
 use data::{list_videos, Data};
 
-use std::{borrow::Cow, path::PathBuf};
+use std::borrow::Cow;
 
 struct App {
     data: Data,
@@ -54,6 +54,11 @@ pub fn main() -> anyhow::Result<()> {
             .position([0.0, 0.0], imgui::Condition::Always)
             .size(ui.io().display_size, imgui::Condition::Always)
             .build(ui, || {
+
+                if ui.button(im_str!("Reload"), [0.0, 0.0]) {
+                    app.data = list_videos("/mnt/freenas_misc/vidl".into())
+                }
+
                 let chan_list_changed = imgui::ListBox::new(im_str!("##Channel List"))
                     .size([
                         ui.content_region_avail()[0] / 2.0,

@@ -36,36 +36,29 @@ impl App {
 pub fn main() -> anyhow::Result<()> {
     let mut app = App::new();
 
-    use imgui::im_str;
-    let mut channel_items: Vec<imgui::ImString> = app
-        .data
-        .channels
-        .keys()
-        .map(|x| imgui::ImString::new(x))
-        .collect();
-    channel_items.sort_unstable_by_key(|x| x.to_str().to_ascii_lowercase());
+    let mut channel_items: Vec<String> = app.data.channels.keys().cloned().collect();
+    channel_items.sort_unstable_by_key(|x| x.to_ascii_lowercase());
 
     let mut video_items: Vec<imgui::ImString> = vec![];
 
     crate::winsys::run(move |ui| {
         ui.show_metrics_window(&mut true);
 
-        imgui::Window::new(im_str!("Main"))
+        ui.window("Main")
             .position([0.0, 0.0], imgui::Condition::Always)
             .size(ui.io().display_size, imgui::Condition::Always)
-            .build(ui, || {
-
-                if ui.button(im_str!("Reload"), [0.0, 0.0]) {
+            .build(|| {
+                if ui.button("Reload") {
                     app.data = list_videos("/mnt/freenas_misc/vidl".into())
                 }
 
-                let chan_list_changed = imgui::ListBox::new(im_str!("##Channel List"))
+                let chan_list_changed = imgui::ListBox::new("##Channel List")
                     .size([
                         ui.content_region_avail()[0] / 2.0,
                         ui.content_region_avail()[1] - 30.0,
                     ])
                     .build_simple(ui, &mut app.sel_channel, &channel_items, &|x| {
-                        Cow::Owned(imgui::ImString::new(format!("{}", x)))
+                        Cow::Owned(format!("{}", x))
                     });
 
                 if chan_list_changed || app.refresh {
@@ -78,33 +71,44 @@ pub fn main() -> anyhow::Result<()> {
                         .collect();
                     app.refresh = false;
                 }
-                ui.same_line(0.0);
-                imgui::ListBox::new(im_str!("##Videos"))
+                ui.same_line();
+                imgui::ListBox::new("##Videos")
                     .size([
                         ui.content_region_avail()[0],
                         ui.content_region_avail()[1] - 30.0,
                     ])
                     .build_simple(ui, &mut app.sel_video, &video_items, &|x| {
-                        Cow::Owned(imgui::ImString::new(format!("{}", x)))
+                        Cow::Owned(format!("{}", x))
                     });
-                if ui.button(im_str!("Mark watched"), [100.0, 28.0]) {
+                if ui.button_with_size("Mark watched", [100.0, 28.0]) {
                     let chan_name = channel_items[app.sel_channel].to_string();
                     let video = &app.data.channels[&chan_name].videos[app.sel_video];
                     let p = std::path::Path::new(&video.path);
-                    let dest = p.parent().unwrap().join("watched").join(p.file_name().unwrap());
+                    let dest = p
+                        .parent()
+                        .unwrap()
+                        .join("watched")
+                        .join(p.file_name().unwrap());
                     std::fs::rename(p, dest).unwrap();
-                    app.data.channels.get_mut(&chan_name).unwrap().videos.remove(app.sel_video);
+                    app.data
+                        .channels
+                        .get_mut(&chan_name)
+                        .unwrap()
+                        .videos
+                        .remove(app.sel_video);
                     app.refresh = true;
                 }
 
-                ui.same_line(200.0);
+                ui.same_line_with_spacing(-1.0, 200.0);
 
-                if ui.button(im_str!("Play"), [-100.0, 28.0]) {
+                if ui.button_with_size("Play", [-100.0, 28.0]) {
                     let chan_name = channel_items[app.sel_channel].to_string();
                     let video = &app.data.channels[&chan_name].videos[app.sel_video];
-                    std::process::Command::new("xdg-open").arg(&video.path).spawn().unwrap();
+                    std::process::Command::new("xdg-open")
+                        .arg(&video.path)
+                        .spawn()
+                        .unwrap();
                 }
-
             });
     });
 

@@ -7,9 +7,10 @@ edition = "2018"
 # See more keys and their definitions at https://doc.rust-lang.org/cargo/reference/manifest.html
 
 [dependencies]
-imgui = "0.7"
+imgui = "0.9"
+imgui-glow-renderer = "0.9"
+imgui-winit-support = "0.9"
+winit = {version = "0.27", features = ["x11"]}
 anyhow = "1.0"
-glow = "*"
-imgui-glow-renderer = { git = "https://github.com/Hperigo/imgui-glow-renderer.git", rev = "f6144836c7a4612fe74aa9338b6df95b0b464e0c" }
-imgui-winit-support = "*"
-glutin = "*"
+glow = "0.10"
+glutin = "0.29"

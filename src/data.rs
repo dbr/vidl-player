@@ -56,7 +56,7 @@ pub fn list_videos(path: std::path::PathBuf) -> Data {
             let filename = raw_filename.to_str().unwrap();
 
             if filename.starts_with(".") {
-                continue
+                continue;
             }
             let (chan, title) = match filename.find("__") {
                 Some(idx) => filename.split_at(idx),

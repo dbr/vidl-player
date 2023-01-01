@@ -1,10 +1,9 @@
 use std::time::Instant;
 
 use glow::*;
-use glutin::event::{Event, WindowEvent};
-use glutin::event_loop::ControlFlow;
+use winit::event::{Event, WindowEvent};
+use winit::event_loop::ControlFlow;
 
-use imgui::im_str;
 use imgui_glow_renderer::Renderer;
 use imgui_winit_support::{HiDpiMode, WinitPlatform};
 
@@ -69,8 +68,10 @@ where
     style.window_border_size = 0.0;
     style.colors[imgui::StyleColor::TitleBg as usize] = [1.0, 1.0, 1.0, 1.0];
 
+    let mut texture_map = imgui::Textures::<glow::Texture>::default();
+
     // Create glow renderer
-    let imgui_renderer = Renderer::new(&gl, &mut imgui);
+    let mut imgui_renderer = Renderer::initialize(&gl, &mut imgui, &mut texture_map, true).unwrap();
 
     // Main event loop
     event_loop.run(move |event, _, control_flow| {
@@ -79,9 +80,6 @@ where
                 event: WindowEvent::CloseRequested,
                 ..
             } => {
-                // Clean up on window close
-                imgui_renderer.cleanup(&gl);
-
                 *control_flow = ControlFlow::Exit;
             }
 
@@ -117,10 +115,10 @@ where
 
                 // Get draw list for rendering
                 platform.prepare_render(&ui, &windowed_context.window());
-                let draw_data = ui.render();
+                let draw_data = imgui.render();
 
                 // Render it
-                imgui_renderer.render(&gl, &draw_data);
+                imgui_renderer.render(&gl, &texture_map, &draw_data);
                 windowed_context.swap_buffers().unwrap();
             }
 

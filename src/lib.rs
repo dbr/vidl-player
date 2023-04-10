@@ -42,8 +42,6 @@ pub fn main() -> anyhow::Result<()> {
     let mut video_items: Vec<imgui::ImString> = vec![];
 
     crate::winsys::run(move |ui| {
-        ui.show_metrics_window(&mut true);
-
         ui.window("Main")
             .position([0.0, 0.0], imgui::Condition::Always)
             .size(ui.io().display_size, imgui::Condition::Always)

@@ -61,7 +61,7 @@ pub fn main() -> anyhow::Result<()> {
                         ui.content_region_avail()[1] - 30.0,
                     ])
                     .build_simple(ui, &mut app.sel_channel, &channel_items, &|x| {
-                        Cow::Owned(format!("{}", x))
+                        Cow::Owned(format!("{}##{}", x, x))
                     });
 
                 if chan_list_changed || app.refresh {

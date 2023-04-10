@@ -31,6 +31,11 @@ impl App {
             refresh: false,
         }
     }
+
+    fn refresh(&mut self) {
+        self.data = list_videos("/mnt/freenas_misc/vidl".into());
+        self.data.sort_videos();
+    }
 }
 
 pub fn main() -> anyhow::Result<()> {
@@ -42,12 +47,12 @@ pub fn main() -> anyhow::Result<()> {
     let mut video_items: Vec<imgui::ImString> = vec![];
 
     crate::winsys::run(move |ui| {
-        ui.window("Main")
+        ui.window("Main Window")
             .position([0.0, 0.0], imgui::Condition::Always)
             .size(ui.io().display_size, imgui::Condition::Always)
             .build(|| {
                 if ui.button("Reload") {
-                    app.data = list_videos("/mnt/freenas_misc/vidl".into())
+                    app.refresh();
                 }
 
                 let chan_list_changed = imgui::ListBox::new("##Channel List")

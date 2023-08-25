@@ -44,7 +44,7 @@ pub fn main() -> anyhow::Result<()> {
     let mut channel_items: Vec<String> = app.data.channels.keys().cloned().collect();
     channel_items.sort_unstable_by_key(|x| x.to_ascii_lowercase());
 
-    let mut video_items: Vec<imgui::ImString> = vec![];
+    let mut video_items: Vec<String> = vec![];
 
     crate::winsys::run(move |ui| {
         ui.window("Main Window")
@@ -70,7 +70,7 @@ pub fn main() -> anyhow::Result<()> {
                     video_items = x
                         .videos
                         .iter()
-                        .map(|v| imgui::ImString::new(&v.title))
+                        .map(|v| v.title.clone())
                         .collect();
                     app.refresh = false;
                 }
@@ -81,7 +81,7 @@ pub fn main() -> anyhow::Result<()> {
                         ui.content_region_avail()[1] - 30.0,
                     ])
                     .build_simple(ui, &mut app.sel_video, &video_items, &|x| {
-                        Cow::Owned(format!("{}", x))
+                        Cow::Borrowed(x)
                     });
                 if ui.button_with_size("Mark watched", [100.0, 28.0]) {
                     let chan_name = channel_items[app.sel_channel].to_string();

@@ -73,7 +73,7 @@ pub fn list_videos(path: std::path::PathBuf) -> Data {
                 });
         }
     }
-    for (key, data) in &mut ret.channels {
+    for (_key, data) in &mut ret.channels {
         data.videos.sort();
     }
 

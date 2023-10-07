@@ -1,50 +1,41 @@
 mod data;
 mod winsys;
 
+use std::path::PathBuf;
+
 use data::{list_videos, Data};
 
-use std::borrow::Cow;
-
 struct App {
+    root_path: PathBuf,
     data: Data,
-    sel_channel: usize,
-    sel_video: usize,
-    refresh: bool,
+    sel_channel: Option<String>,
+    sel_video: Option<String>,
+    search: String,
 }
 
 impl App {
     fn new() -> App {
-        let mut data = list_videos("/mnt/freenas_misc/vidl".into());
+        let root_path = "/mnt/hypercube/misc/vidl".into();
+        let mut data = list_videos(&root_path);
         data.sort_videos();
 
-        let mut channels = vec![];
-        for (chan_title, chan_info) in &data.channels {
-            channels.push((chan_title.clone(), chan_info.videos.len()));
-        }
-
-        channels.sort_by(|a, b| a.partial_cmp(&b).unwrap());
-
         App {
+            root_path,
             data,
-            sel_channel: 1,
-            sel_video: 0,
-            refresh: false,
+            sel_channel: None,
+            sel_video: None,
+            search: "".into(),
         }
     }
 
     fn refresh(&mut self) {
-        self.data = list_videos("/mnt/freenas_misc/vidl".into());
+        self.data = list_videos(&self.root_path);
         self.data.sort_videos();
     }
 }
 
 pub fn main() -> anyhow::Result<()> {
     let mut app = App::new();
-
-    let mut channel_items: Vec<String> = app.data.channels.keys().cloned().collect();
-    channel_items.sort_unstable_by_key(|x| x.to_ascii_lowercase());
-
-    let mut video_items: Vec<String> = vec![];
 
     crate::winsys::run(move |ui| {
         ui.window("Main Window")
@@ -55,62 +46,93 @@ pub fn main() -> anyhow::Result<()> {
                     app.refresh();
                 }
 
-                let chan_list_changed = imgui::ListBox::new("##Channel List")
+                ui.same_line();
+
+                ui.input_text("##Search", &mut app.search).build();
+
+                ui.same_line();
+
+                if ui.button("clear") {
+                    app.search.clear();
+                }
+
+                imgui::ListBox::new("##Channel List")
                     .size([
                         ui.content_region_avail()[0] / 2.0,
                         ui.content_region_avail()[1] - 30.0,
                     ])
-                    .build_simple(ui, &mut app.sel_channel, &channel_items, &|x| {
-                        Cow::Owned(format!("{}##{}", x, x))
+                    .build(ui, || {
+                        for (i, chan) in app.data.channel_list(&app.search).iter().enumerate() {
+                            let selected = match app.sel_channel {
+                                Some(ref x) => x == chan,
+                                None => false,
+                            };
+                            if ui
+                                .selectable_config(format!("{}##channel {}", &chan, i))
+                                .selected(selected)
+                                .build()
+                            {
+                                app.sel_channel = Some(chan.to_string());
+                            }
+                        }
                     });
 
-                if chan_list_changed || app.refresh {
-                    let sel_channel_name = &channel_items[app.sel_channel];
-                    let x = &app.data.channels[&sel_channel_name.to_string()];
-                    video_items = x
-                        .videos
-                        .iter()
-                        .map(|v| v.title.clone())
-                        .collect();
-                    app.refresh = false;
-                }
                 ui.same_line();
                 imgui::ListBox::new("##Videos")
                     .size([
                         ui.content_region_avail()[0],
                         ui.content_region_avail()[1] - 30.0,
                     ])
-                    .build_simple(ui, &mut app.sel_video, &video_items, &|x| {
-                        Cow::Borrowed(x)
+                    .build(ui, || {
+                        if let Some(sc) = &app.sel_channel {
+                            let video_items: Vec<&str> = app.data.list_videos(&sc, &app.search);
+                            for (i, video) in video_items.iter().enumerate() {
+                                let selected = match app.sel_video {
+                                    Some(ref x) => x == video,
+                                    None => false,
+                                };
+                                if ui
+                                    .selectable_config(format!("{}##video {}", &video, i))
+                                    .selected(selected)
+                                    .build()
+                                {
+                                    app.sel_video = Some(video.to_string());
+                                }
+                            }
+                        }
                     });
+
                 if ui.button_with_size("Mark watched", [100.0, 28.0]) {
-                    let chan_name = channel_items[app.sel_channel].to_string();
-                    let video = &app.data.channels[&chan_name].videos[app.sel_video];
-                    let p = std::path::Path::new(&video.path);
-                    let dest = p
-                        .parent()
-                        .unwrap()
-                        .join("watched")
-                        .join(p.file_name().unwrap());
-                    std::fs::rename(p, dest).unwrap();
-                    app.data
-                        .channels
-                        .get_mut(&chan_name)
-                        .unwrap()
-                        .videos
-                        .remove(app.sel_video);
-                    app.refresh = true;
+                    if let Some(sc) = &app.sel_channel {
+                        if let Some(sv) = &app.sel_video {
+                            if let Some(video) = app.data.get_video(&sc, &sv) {
+                                let p = std::path::Path::new(&video.path);
+                                let dest = p
+                                    .parent()
+                                    .unwrap()
+                                    .join("watched")
+                                    .join(p.file_name().unwrap());
+                                std::fs::rename(p, dest).unwrap();
+                                app.sel_video = None;
+                                app.refresh();
+                            }
+                        }
+                    }
                 }
 
                 ui.same_line_with_spacing(-1.0, 200.0);
 
                 if ui.button_with_size("Play", [-100.0, 28.0]) {
-                    let chan_name = channel_items[app.sel_channel].to_string();
-                    let video = &app.data.channels[&chan_name].videos[app.sel_video];
-                    std::process::Command::new("xdg-open")
-                        .arg(&video.path)
-                        .spawn()
-                        .unwrap();
+                    if let Some(sc) = &app.sel_channel {
+                        if let Some(sv) = &app.sel_video {
+                            if let Some(video) = app.data.get_video(&sc, &sv) {
+                                std::process::Command::new("xdg-open")
+                                    .arg(&video.path)
+                                    .spawn()
+                                    .unwrap();
+                            }
+                        }
+                    }
                 }
             });
     });

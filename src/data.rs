@@ -36,9 +36,68 @@ impl Data {
                 .sort_by(|a, b| a.path.partial_cmp(&b.path).unwrap());
         }
     }
+
+    pub fn channel_list(&self, search: &str) -> Vec<&str> {
+        let mut ret: Vec<&str> = vec![];
+        // Find channels that match
+        for chan in self.channels.keys() {
+            if chan.to_lowercase().contains(search.to_lowercase().as_str()) {
+                ret.push(chan.as_ref());
+            }
+        }
+        // Find channels that match by containing video that matches search
+        for (chan, data) in &self.channels {
+            for video in &data.videos {
+                if video
+                    .title
+                    .to_lowercase()
+                    .contains(search.to_lowercase().as_str())
+                {
+                    ret.push(chan.as_ref());
+                    break;
+                }
+            }
+        }
+
+        // Dedup and sort
+        ret.sort_by_key(|a| a.to_lowercase());
+        ret.dedup();
+        ret
+    }
+
+    pub fn list_videos(&self, channel: &str, search: &str) -> Vec<&str> {
+        let mut ret: Vec<&str> = vec![];
+        if let Some(chan) = self.channels.get(channel) {
+            for video in &chan.videos {
+                if video
+                    .title
+                    .to_lowercase()
+                    .contains(search.to_lowercase().as_str())
+                    || channel
+                        .to_lowercase()
+                        .contains(search.to_lowercase().as_str())
+                {
+                    ret.push(video.title.as_ref());
+                }
+            }
+        }
+        ret.sort_by_key(|a| a.to_lowercase());
+        ret
+    }
+
+    pub fn get_video(&self, channel: &str, video: &str) -> Option<&Video> {
+        if let Some(chan) = self.channels.get(channel) {
+            for v in &chan.videos {
+                if v.title == video {
+                    return Some(&v);
+                }
+            }
+        }
+        None
+    }
 }
 
-pub fn list_videos(path: std::path::PathBuf) -> Data {
+pub fn list_videos(path: &std::path::PathBuf) -> Data {
     let mut ret = Data {
         channels: HashMap::new(),
     };

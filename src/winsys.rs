@@ -118,7 +118,9 @@ where
                 let draw_data = imgui.render();
 
                 // Render it
-                imgui_renderer.render(&gl, &texture_map, &draw_data).unwrap();
+                imgui_renderer
+                    .render(&gl, &texture_map, &draw_data)
+                    .unwrap();
                 windowed_context.swap_buffers().unwrap();
             }
 

@@ -75,6 +75,8 @@ where
 
     // Main event loop
     event_loop.run(move |event, _, control_flow| {
+        *control_flow = ControlFlow::Wait;
+
         match event {
             Event::WindowEvent {
                 event: WindowEvent::CloseRequested,
